@@ -42,3 +42,22 @@ jobs:
 
       - name: Construir imagen
         run: docker build -t coderhouse-api:${{ github.sha }} .
+
+  sast:
+    name: Seguridad SAST - Bandit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Instalar Bandit
+        run: python -m pip install bandit==1.9.4
+
+      - name: Analizar codigo Python
+        run: bandit -r app.py tests/ -f txt
