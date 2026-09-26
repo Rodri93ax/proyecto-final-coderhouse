@@ -61,3 +61,42 @@ jobs:
 
       - name: Analizar codigo Python
         run: bandit -r app.py tests/ -f txt
+
+  publish:
+    name: Publicar imagen en GHCR
+    needs: [tests, docker, sast]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/rodri93ax/proyecto-final-coderhouse
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Construir imagen para publicar
+        run: |
+          docker build \
+            --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            -t "$IMAGE:$GITHUB_SHA" .
+
+      - name: Autenticar en GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io \
+            -u "$GITHUB_ACTOR" --password-stdin
+
+      - name: Publicar imagen
+        run: |
+          docker push "$IMAGE:$GITHUB_SHA"
+          echo "Imagen publicada: \`$IMAGE:$GITHUB_SHA\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Cerrar sesion del registry
+        if: always()
+        run: docker logout ghcr.io
