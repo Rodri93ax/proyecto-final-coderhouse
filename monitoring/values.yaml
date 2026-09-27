@@ -1,0 +1,83 @@
+fullnameOverride: monitoring
+
+kubeEtcd:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeProxy:
+  enabled: false
+
+defaultRules:
+  rules:
+    etcd: false
+    kubeControllerManager: false
+    kubeSchedulerAlerting: false
+    kubeSchedulerRecording: false
+    kubeProxy: false
+
+grafana:
+  admin:
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: false
+  deploymentStrategy:
+    type: Recreate
+  persistence:
+    enabled: true
+    storageClassName: local-path
+    accessModes:
+      - ReadWriteOnce
+    size: 1Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+prometheus:
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: false
+  prometheusSpec:
+    retention: 1d
+    retentionSize: 2GB
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+    podMonitorSelector:
+      matchLabels:
+        release: monitoring
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 1536Mi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: local-path
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 5Gi
+
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi

@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: coderhouse-api
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - coderhouse
+  selector:
+    matchLabels:
+      app: coderhouse-api
+  podMetricsEndpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
