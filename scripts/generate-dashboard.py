@@ -108,6 +108,12 @@ dashboard = {
     ]
 }
 
+for item in dashboard["panels"]:
+    if item["id"] == 2:
+        item["fieldConfig"]["defaults"]["color"] = {
+            "mode": "fixed", "fixedColor": "blue"
+        }
+
 content = json.dumps(dashboard, indent=2, ensure_ascii=False)
 Path("monitoring/dashboard.json").write_text(content + "\n")
 
