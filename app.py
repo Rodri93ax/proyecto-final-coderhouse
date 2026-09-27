@@ -17,6 +17,16 @@ def record_request(response):
             endpoint=request.endpoint or "not_found",
             status=str(response.status_code),
         ).inc()
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'none'; frame-ancestors 'none'; "
+        "base-uri 'none'; form-action 'none'"
+    )
+    response.headers["Permissions-Policy"] = (
+        "camera=(), microphone=(), geolocation=()"
+    )
+    response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+    response.headers["Cache-Control"] = "no-store"
     return response
 
 
