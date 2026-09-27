@@ -21,5 +21,7 @@ La alerta queda registrada, sin ocultarla ni desactivar la regla.
 
 Referencia: https://www.zaproxy.org/docs/alerts/10049-1/
 
-Pendiente: ampliar la cobertura DAST a /health y /metrics e integrar
-su ejecución y evaluación en el pipeline.
+Integración completada: ejecución CI 36353724830 exitosa.
+ZAP analiza /, /health y /metrics antes de publicar en GHCR.
+Solo se acepta la alerta informativa 10049-1; cualquier otra alerta
+o error del análisis bloquea la publicación.
