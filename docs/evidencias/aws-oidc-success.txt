@@ -1,0 +1,9 @@
+
+✓ main Verificar acceso AWS por OIDC · 36355746346
+Triggered via workflow_dispatch less than a minute ago
+
+JOBS
+✓ verify in 9s (ID 108724063415)
+
+For more information about the job, try: gh run view --job=108724063415
+View this run on GitHub: https://github.com/Rodri93ax/proyecto-final-coderhouse/actions/runs/36355746346
