@@ -62,9 +62,87 @@ jobs:
       - name: Analizar codigo Python
         run: bandit -r app.py tests/ -f txt
 
+  dast:
+    name: Seguridad DAST - ZAP
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Construir e iniciar API
+        run: |
+          docker build -t coderhouse-api:dast .
+          docker run -d --name api-dast \
+            -p 127.0.0.1:8000:8000 coderhouse-api:dast
+          curl --retry 12 --retry-connrefused --retry-delay 2 \
+            --max-time 10 -fsS http://127.0.0.1:8000/health
+
+      - name: Preparar ZAP con la imagen del analisis inicial
+        run: |
+          mkdir -p reports/zap
+          chmod 777 reports/zap
+          ZAP_IMAGE="$(cat docs/evidencias/zap-inicial/imagen.txt)"
+          if [[ ! "$ZAP_IMAGE" =~ ^ghcr.io/zaproxy/zaproxy@sha256:[a-f0-9]{64}$ ]]; then
+            echo "Referencia de imagen ZAP inválida"
+            exit 1
+          fi
+          docker pull "$ZAP_IMAGE"
+          printf 'ZAP_IMAGE=%s\n' "$ZAP_IMAGE" >> "$GITHUB_ENV"
+          printf '%s\n' "$ZAP_IMAGE" > reports/zap/imagen.txt
+
+      - name: Analizar rutas y evaluar resultados
+        run: |
+          for route in home health metrics; do
+            path="/"
+            if [ "$route" != home ]; then
+              path="/$route"
+            fi
+
+            code=0
+            docker run --rm --network host \
+              -v "$PWD/reports/zap:/zap/wrk:rw" \
+              "$ZAP_IMAGE" zap-baseline.py \
+              -t "http://127.0.0.1:8000$path" \
+              -m 1 \
+              -r "$route.html" \
+              -J "$route.json" \
+              > "reports/zap/$route.log" 2>&1 || code=$?
+
+            cat "reports/zap/$route.log"
+            printf '%s\n' "$code" > "reports/zap/$route.exit"
+
+            if [ "$code" -ne 0 ] && [ "$code" -ne 2 ]; then
+              echo "ZAP falló al analizar $route: código $code"
+              exit 1
+            fi
+
+            python3 security/check_zap.py "reports/zap/$route.json"
+          done
+
+      - name: Guardar logs de la API
+        if: always()
+        run: |
+          mkdir -p reports
+          docker logs api-dast > reports/api.log 2>&1 || true
+
+      - name: Publicar informes DAST
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: dast-${{ github.sha }}
+          path: reports/
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Limpiar contenedor
+        if: always()
+        run: docker rm -f api-dast || true
+
   publish:
     name: Publicar imagen en GHCR
-    needs: [tests, docker, sast]
+    needs: [tests, docker, sast, dast]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
