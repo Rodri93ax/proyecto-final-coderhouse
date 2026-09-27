@@ -1,0 +1,3 @@
+Inicio: 16 clientes durante 180 segundos
+Solicitudes OK: 81443
+Errores: 0
