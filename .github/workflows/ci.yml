@@ -76,7 +76,7 @@ jobs:
           docker build -t coderhouse-api:dast .
           docker run -d --name api-dast \
             -p 127.0.0.1:8000:8000 coderhouse-api:dast
-          curl --retry 12 --retry-connrefused --retry-delay 2 \
+          curl --retry 12 --retry-all-errors --retry-delay 2 --retry-max-time 60 \
             --max-time 10 -fsS http://127.0.0.1:8000/health
 
       - name: Preparar ZAP con la imagen del analisis inicial
