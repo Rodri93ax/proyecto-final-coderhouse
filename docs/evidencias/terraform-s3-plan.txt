@@ -1,0 +1,49 @@
+data.aws_availability_zones.available: Reading...
+module.network.aws_vpc.this: Refreshing state... [id=vpc-0a832c08f450e585c]
+data.aws_availability_zones.available: Read complete after 1s [id=us-east-1]
+module.network.aws_internet_gateway.this: Refreshing state... [id=igw-0595b7bf74a45858b]
+module.network.aws_subnet.public: Refreshing state... [id=subnet-069a72410bef8cee1]
+module.network.aws_route_table.public: Refreshing state... [id=rtb-0d6df42f5162cf006]
+module.network.aws_route_table_association.public: Refreshing state... [id=rtbassoc-07676e0b9123a8397]
+module.compute.data.aws_ami.ubuntu: Reading...
+module.compute.aws_key_pair.this: Refreshing state... [id=coderhouse-ssh]
+module.compute.aws_security_group.this: Refreshing state... [id=sg-0cdcf77fdc56160fa]
+module.compute.data.aws_ami.ubuntu: Read complete after 0s [id=ami-0045d7fc2ad003464]
+module.compute.aws_instance.this: Refreshing state... [id=i-0125cbf96588912aa]
+
+Note: Objects have changed outside of Terraform
+
+Terraform detected the following changes made outside of Terraform since the
+last "terraform apply" which may have affected this plan:
+
+  # module.compute.aws_instance.this has changed
+  ~ resource "aws_instance" "this" {
+        id                                   = "i-0125cbf96588912aa"
+      ~ public_ip                            = "3.239.123.240" -> "32.199.192.224"
+        tags                                 = {
+            "Name" = "coderhouse-k3s"
+        }
+        # (41 unchanged attributes hidden)
+
+        # (9 unchanged blocks hidden)
+    }
+
+
+Unless you have made equivalent changes to your configuration, or ignored the
+relevant attributes using ignore_changes, the following plan may include
+actions to undo or respond to these changes.
+
+─────────────────────────────────────────────────────────────────────────────
+
+Changes to Outputs:
+  ~ app_url     = "http://3.239.123.240" -> "http://32.199.192.224"
+  ~ public_ip   = "3.239.123.240" -> "32.199.192.224"
+
+You can apply this plan to save these new output values to the Terraform
+state, without changing any real infrastructure.
+
+─────────────────────────────────────────────────────────────────────────────
+
+Note: You didn't use the -out option to save this plan, so Terraform can't
+guarantee to take exactly these actions if you run "terraform apply" now.
+Releasing state lock. This may take a few moments...
