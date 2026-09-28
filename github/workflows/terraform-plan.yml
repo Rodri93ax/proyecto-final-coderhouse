@@ -1,0 +1,46 @@
+name: Terraform plan AWS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_VAR_admin_cidr: ${{ vars.ADMIN_CIDR }}
+      TF_VAR_public_key_path: keys/coderhouse-aws.pub
+
+    defaults:
+      run:
+        working-directory: infra
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.4
+
+      - name: Obtener credenciales AWS por OIDC
+        uses: aws-actions/configure-aws-credentials@v6.2.2
+        with:
+          role-to-assume: arn:aws:iam::277385996330:role/github-coderhouse-deploy
+          aws-region: us-east-1
+
+      - name: Inicializar Terraform
+        run: terraform init -input=false -lockfile=readonly
+
+      - name: Validar configuración
+        run: terraform validate -no-color
+
+      - name: Mostrar plan
+        run: terraform plan -input=false -no-color -lock-timeout=2m
