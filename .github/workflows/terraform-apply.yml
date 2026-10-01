@@ -1,0 +1,90 @@
+name: Terraform apply AWS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: terraform-aws
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_VAR_admin_cidr: ${{ vars.ADMIN_CIDR }}
+      TF_VAR_public_key_path: keys/coderhouse-aws.pub
+
+    defaults:
+      run:
+        working-directory: infra
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.4
+          terraform_wrapper: false
+
+      - name: Obtener credenciales AWS por OIDC
+        uses: aws-actions/configure-aws-credentials@v6.2.2
+        with:
+          role-to-assume: arn:aws:iam::277385996330:role/github-coderhouse-deploy
+          aws-region: us-east-1
+
+      - name: Inicializar Terraform
+        run: terraform init -input=false -lockfile=readonly
+
+      - name: Validar configuración
+        run: terraform validate -no-color
+
+      - name: Generar plan
+        run: terraform plan -input=false -no-color -lock-timeout=2m -out=tfplan
+
+      - name: Comprobar que no haya cambios en recursos
+        shell: bash
+        run: |
+          terraform show -json tfplan > tfplan.json
+
+          python3 <<'PY'
+          import json
+          import sys
+
+          with open("tfplan.json", encoding="utf-8") as archivo:
+              plan = json.load(archivo)
+
+          cambios = [
+              recurso
+              for recurso in plan.get("resource_changes", [])
+              if recurso.get("mode") == "managed"
+              and (
+                  recurso["change"]["actions"] != ["no-op"]
+                  or recurso["change"].get("importing") is not None
+              )
+          ]
+
+          if cambios:
+              print("Se detiene el apply: hay cambios en recursos.")
+              for recurso in cambios:
+                  acciones = ", ".join(recurso["change"]["actions"])
+                  print(f'{recurso["address"]}: {acciones}')
+              sys.exit(1)
+
+          print("Verificación correcta: solo se permite actualizar el estado y los outputs.")
+          PY
+
+      - name: Aplicar el plan verificado
+        run: terraform apply -input=false -no-color -lock-timeout=2m tfplan
+
+      - name: Mostrar outputs
+        run: terraform output -no-color
