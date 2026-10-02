@@ -178,3 +178,175 @@ jobs:
       - name: Cerrar sesion del registry
         if: always()
         run: docker logout ghcr.io
+
+  deploy:
+    name: Desplegar API en K3s
+    needs: publish
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    concurrency:
+      group: deploy-coderhouse-k3s
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: us-east-1
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_PAGER: ""
+      INSTANCE_ID: i-0125cbf96588912aa
+      IMAGE: ghcr.io/rodri93ax/proyecto-final-coderhouse
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Obtener credenciales AWS por OIDC
+        uses: aws-actions/configure-aws-credentials@v6.2.2
+        with:
+          role-to-assume: arn:aws:iam::277385996330:role/github-coderhouse-deploy
+          aws-region: us-east-1
+
+      - name: Comprobar instancia y agente SSM
+        shell: bash
+        run: |
+          STATE="$(aws ec2 describe-instances \
+            --instance-ids "$INSTANCE_ID" \
+            --query 'Reservations[0].Instances[0].State.Name' \
+            --output text)"
+
+          if [ "$STATE" != "running" ]; then
+            echo "La EC2 debe estar encendida. Estado actual: $STATE"
+            exit 1
+          fi
+
+          PING="$(aws ssm describe-instance-information \
+            --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
+            --query 'InstanceInformationList[0].PingStatus' \
+            --output text)"
+
+          if [ "$PING" != "Online" ]; then
+            echo "El agente SSM debe estar Online. Estado actual: $PING"
+            exit 1
+          fi
+
+      - name: Aplicar manifiestos y verificar despliegue por SSM
+        shell: bash
+        run: |
+          python3 <<'PY'
+          import base64
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import subprocess
+          import sys
+          import time
+
+          def aws(*args):
+              return subprocess.run(
+                  ["aws", *args, "--output", "json"],
+                  capture_output=True,
+                  text=True,
+              )
+
+          instance = os.environ["INSTANCE_ID"]
+          image = f'{os.environ["IMAGE"]}:{os.environ["GITHUB_SHA"]}'
+          manifest = Path("k8s/app.yaml").read_text(encoding="utf-8")
+
+          manifest, count = re.subn(
+              r"(?m)^(\s*image:\s*)ghcr\.io/rodri93ax/proyecto-final-coderhouse:[^\s]+[ \t]*$",
+              lambda match: match.group(1) + image,
+              manifest,
+          )
+
+          if count != 1:
+              sys.exit("Se esperaba una única imagen de la API en k8s/app.yaml.")
+
+          encoded = base64.b64encode(manifest.encode()).decode()
+          script = "\n".join([
+              "set -eu",
+              'DEPLOY_DIR="$(mktemp -d)"',
+              'trap \'rm -rf "$DEPLOY_DIR"\' EXIT',
+              f"printf '%s' '{encoded}' | base64 -d > \"$DEPLOY_DIR/app.yaml\"",
+              'k3s kubectl apply -f "$DEPLOY_DIR/app.yaml"',
+              "k3s kubectl -n coderhouse rollout status deployment/coderhouse-api --timeout=300s",
+              "k3s kubectl -n coderhouse get deployment,pods,svc,ingress,hpa",
+              "curl --retry 12 --retry-all-errors --retry-delay 2 --retry-max-time 60 --max-time 10 -fsS http://127.0.0.1/health",
+              "printf '\\n'",
+          ])
+
+          parameters = {
+              "commands": [script],
+              "executionTimeout": ["600"],
+          }
+          Path("ssm-parameters.json").write_text(
+              json.dumps(parameters), encoding="utf-8"
+          )
+
+          sent = aws(
+              "ssm", "send-command",
+              "--instance-ids", instance,
+              "--document-name", "AWS-RunShellScript",
+              "--comment", f'Deploy {os.environ["GITHUB_SHA"]}',
+              "--timeout-seconds", "120",
+              "--parameters", "file://ssm-parameters.json",
+          )
+
+          if sent.returncode:
+              sys.exit(sent.stderr)
+
+          command_id = json.loads(sent.stdout)["Command"]["CommandId"]
+          print(f"Comando SSM: {command_id}", flush=True)
+          print(f"Imagen: {image}", flush=True)
+
+          deadline = time.monotonic() + 900
+          previous_status = None
+
+          while time.monotonic() < deadline:
+              result = aws(
+                  "ssm", "get-command-invocation",
+                  "--command-id", command_id,
+                  "--instance-id", instance,
+              )
+
+              if result.returncode:
+                  if "InvocationDoesNotExist" in result.stderr:
+                      time.sleep(10)
+                      continue
+                  sys.exit(result.stderr)
+
+              invocation = json.loads(result.stdout)
+              status = invocation["Status"]
+
+              if status != previous_status:
+                  print(f"Estado SSM: {status}", flush=True)
+                  previous_status = status
+
+              if status in {"Pending", "InProgress", "Delayed", "Cancelling"}:
+                  time.sleep(10)
+                  continue
+
+              print(invocation.get("StandardOutputContent", ""))
+              print(invocation.get("StandardErrorContent", ""), file=sys.stderr)
+
+              if status != "Success" or invocation.get("ResponseCode") != 0:
+                  sys.exit(f"Falló el despliegue: {status}")
+
+              with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+                  summary.write(
+                      f"### Despliegue verificado\n\n"
+                      f"- Instancia: `{instance}`\n"
+                      f"- Imagen: `{image}`\n"
+                      f"- Comando SSM: `{command_id}`\n"
+                      f"- Rollout y healthcheck: correctos\n"
+                  )
+
+              break
+          else:
+              sys.exit(
+                  f"Se agotó la espera. Revisar el comando SSM {command_id} en AWS."
+              )
+          PY
