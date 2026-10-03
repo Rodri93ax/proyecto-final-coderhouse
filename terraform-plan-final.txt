@@ -1,0 +1,24 @@
+Procedencia: transcripción proporcionada por Rodrigo Arrocha el 03/10/2026,
+posterior al apply de importación IAM. No es una ejecución nueva del redactor.
+
+Run terraform plan -input=false -no-color -lock-timeout=2m
+data.aws_availability_zones.available: Reading...
+module.network.aws_vpc.this: Refreshing state... [id=vpc-0a832c08f450e585c]
+data.aws_availability_zones.available: Read complete after 0s [id=us-east-1]
+module.network.aws_internet_gateway.this: Refreshing state... [id=igw-0595b7bf74a45858b]
+module.network.aws_subnet.public: Refreshing state... [id=subnet-069a72410bef8cee1]
+module.network.aws_route_table.public: Refreshing state... [id=rtb-0d6df42f5162cf006]
+module.network.aws_route_table_association.public: Refreshing state... [id=rtbassoc-07676e0b9123a8397]
+module.compute.aws_key_pair.this: Refreshing state... [id=coderhouse-ssh]
+module.compute.aws_iam_role.ssm: Refreshing state... [id=coderhouse-ec2-ssm]
+module.compute.data.aws_ami.ubuntu: Reading...
+module.compute.aws_security_group.this: Refreshing state... [id=sg-0cdcf77fdc56160fa]
+module.compute.data.aws_ami.ubuntu: Read complete after 0s [id=ami-0045d7fc2ad003464]
+module.compute.aws_iam_role_policy_attachment.ssm: Refreshing state... [id=coderhouse-ec2-ssm/arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore]
+module.compute.aws_iam_instance_profile.ssm: Refreshing state... [id=coderhouse-ec2-ssm]
+module.compute.aws_instance.this: Refreshing state... [id=i-0125cbf96588912aa]
+
+No changes. Your infrastructure matches the configuration.
+
+Terraform has compared your real infrastructure against your configuration
+and found no differences, so no changes are needed.

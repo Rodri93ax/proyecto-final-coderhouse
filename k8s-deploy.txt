@@ -1,0 +1,23 @@
+namespace/coderhouse created
+deployment.apps/coderhouse-api created
+service/coderhouse-api created
+ingress.networking.k8s.io/coderhouse-api created
+horizontalpodautoscaler.autoscaling/coderhouse-api created
+Waiting for deployment "coderhouse-api" rollout to finish: 0 out of 2 new replicas have been updated...
+Waiting for deployment "coderhouse-api" rollout to finish: 0 of 2 updated replicas are available...
+deployment "coderhouse-api" successfully rolled out
+NAME                             READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/coderhouse-api   2/2     2            2           8s
+
+NAME                                  READY   STATUS    RESTARTS   AGE
+pod/coderhouse-api-77f8745d65-69d4r   1/1     Running   0          7s
+pod/coderhouse-api-77f8745d65-xb4kl   1/1     Running   0          7s
+
+NAME                     TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
+service/coderhouse-api   ClusterIP   10.43.192.145   <none>        80/TCP    8s
+
+NAME                                       CLASS     HOSTS   ADDRESS      PORTS   AGE
+ingress.networking.k8s.io/coderhouse-api   traefik   *       10.42.1.94   80      8s
+
+NAME                                                 REFERENCE                   TARGETS              MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/coderhouse-api   Deployment/coderhouse-api   cpu: <unknown>/70%   2         4         0          8s

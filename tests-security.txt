@@ -1,0 +1,10 @@
+test_health (test_app.AppTests.test_health) ... ok
+test_home (test_app.AppTests.test_home) ... ok
+test_metrics_count_requests (test_app.AppTests.test_metrics_count_requests) ... ok
+test_not_found (test_app.AppTests.test_not_found) ... ok
+test_headers_on_success_and_not_found (test_security_headers.SecurityHeadersTests.test_headers_on_success_and_not_found) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.056s
+
+OK

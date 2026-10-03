@@ -1,0 +1,16 @@
+
+✓ main CI - Tests y Docker · 36353724830
+Triggered via push about 9 minutes ago
+
+JOBS
+✓ Tests de la API in 8s (ID 108717207335)
+✓ Seguridad DAST - ZAP in 2m33s (ID 108717207460)
+✓ Construir imagen Docker in 14s (ID 108717207476)
+✓ Seguridad SAST - Bandit in 9s (ID 108717207482)
+✓ Publicar imagen en GHCR in 21s (ID 108717663231)
+
+ARTIFACTS
+dast-bf7483d9782d747556ba0bffb70eb0db77e4d21b
+
+For more information about a job, try: gh run view --job=<job-id>
+View this run on GitHub: https://github.com/Rodri93ax/proyecto-final-coderhouse/actions/runs/36353724830

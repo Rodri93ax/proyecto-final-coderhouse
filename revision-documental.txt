@@ -1,0 +1,21 @@
+Revisión complementaria de entrega - 03/10/2026
+Fuente: ZIP proyecto-final-coderhouse-main(2).zip
+Commit indicado por el ZIP: b52c116580bb687ea2bc0c081da27ade6b895505
+
+Entorno de revisión aislado: Python 3.12; dependencias instaladas desde
+requirements.txt sin cambiar sus versiones. Es una comprobación adicional:
+el CI y Docker del proyecto utilizan Python 3.14.
+
+python -m unittest discover -s tests -v
+5 tests ejecutados, resultado OK (0.024 s).
+
+Sintaxis Python (AST): OK.
+Sintaxis de scripts Bash (bash -n): OK.
+security/check_zap.py sobre zap-final/reporte.json: exit 0.
+security/check_zap.py sobre informes CI home/health/metrics: exit 0.
+security/check_zap.py sobre zap-inicial/reporte.json: exit 1 esperado.
+
+No se ejecutaron nuevos Terraform plan/apply, builds Docker ni despliegues AWS
+desde este entorno de revisión. Los resultados cloud citados proceden de los
+logs/capturas aportados por el autor. No se modificó código de aplicación,
+Terraform, Docker, Kubernetes ni workflows durante esta revisión documental.

@@ -1,0 +1,16 @@
+Run terraform apply -input=false -no-color -lock-timeout=2m tfplan 
+module.compute.aws_iam_role.ssm: Importing... [id=coderhouse-ec2-ssm] 
+module.compute.aws_iam_role.ssm: Import complete [id=coderhouse-ec2-ssm] 
+module.compute.aws_iam_role_policy_attachment.ssm: Importing... [id=coderhouse-ec2-ssm/arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore] 
+module.compute.aws_iam_role_policy_attachment.ssm: Import complete [id=coderhouse-ec2-ssm/arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore] 
+module.compute.aws_iam_instance_profile.ssm: Importing... [id=coderhouse-ec2-ssm] 
+module.compute.aws_iam_instance_profile.ssm: Import complete [id=coderhouse-ec2-ssm] 
+module.compute.aws_iam_role.ssm: Modifying... [id=coderhouse-ec2-ssm] 
+module.compute.aws_iam_role.ssm: Modifications complete after 1s [id=coderhouse-ec2-ssm] 
+module.compute.aws_iam_instance_profile.ssm: Modifying... [id=coderhouse-ec2-ssm] 
+module.compute.aws_iam_instance_profile.ssm: Modifications complete after 5s [id=coderhouse-ec2-ssm] 
+Apply complete! Resources: 3 imported, 0 added, 2 changed, 0 destroyed. 
+Outputs: 
+app_url = "http://100.54.24.213" 
+instance_id = "i-0125cbf96588912aa" 
+public_ip = "100.54.24.213"
