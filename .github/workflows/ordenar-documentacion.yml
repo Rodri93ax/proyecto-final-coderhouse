@@ -1,0 +1,404 @@
+name: Ordenar documentacion
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ordenar-documentacion
+  cancel-in-progress: false
+
+jobs:
+  ordenar:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: true
+
+      - name: Verificar y ordenar archivos de documentacion
+        shell: bash
+        run: |
+          python3 <<'PYTHON'
+          from pathlib import Path
+          import hashlib
+          import json
+          import os
+          
+          # Lista exacta del ZIP revisado, commit 10d330f.
+          # Cada entrada contiene origen, destino y SHA-256 esperado.
+          files = json.loads(r'''[
+            [
+              "INDICE.md",
+              "docs/evidencias/INDICE.md",
+              "2fe15f58addffca972b064bbea5120b2d4301fb54d2f56ef33e0da5769b93f7f"
+            ],
+            [
+              "PFArrocha.pdf",
+              "docs/PFArrocha.pdf",
+              "63859f7c8e9ba7850453e781a017b1ccd9c448dbdd527ccb27ee15054f912d03"
+            ],
+            [
+              "analisis.md",
+              "docs/evidencias/zap-final/analisis.md",
+              "80da505f832aa8693d506298557057a72e21879e7f1b360f308c81aea888cf24"
+            ],
+            [
+              "api.log",
+              "docs/evidencias/dast-ci-36353724830/dast-bf7483d9782d747556ba0bffb70eb0db77e4d21b/api.log",
+              "f3849bc9f71ebd9ab7f62ec04aa804774b9a642256f0d5e2e47e2c74b5631114"
+            ],
+            [
+              "aws-health.txt",
+              "docs/evidencias/aws-health.txt",
+              "6489d6d7a33c5d40e18fc61eeb6c34c341279ee61816394dde5189aa4ad8fae5"
+            ],
+            [
+              "aws-oidc-success.txt",
+              "docs/evidencias/aws-oidc-success.txt",
+              "c82decf697f02003d48744a9ac3c146d04733f199d8b123ef8665c3180e1111a"
+            ],
+            [
+              "ci-cd-success.png",
+              "docs/evidencias/capturas/ci-cd-success.png",
+              "b2c32e9a76cc5d7dc869a83758dcac09d087f36be47935cbf4b8ae2df8ad4ae0"
+            ],
+            [
+              "ci-dast-success.txt",
+              "docs/evidencias/ci-dast-success.txt",
+              "48a080e363ffad8b6988a9b16f243744c7003a4d7ca10a80a1095c6e3fc49c6b"
+            ],
+            [
+              "consola (2).txt",
+              "docs/evidencias/zap-inicial/consola.txt",
+              "63a95464d3403ce685c509e95f9ffc9b7be75d3b5ccd14000f0172155ef5fc6a"
+            ],
+            [
+              "consola.txt",
+              "docs/evidencias/zap-final/consola.txt",
+              "cb6301b2a89c6d7b0067abb4d768033da89e56ca3b299e3f02a2b6d6a8cd23b2"
+            ],
+            [
+              "deploy-github-ssm.txt",
+              "docs/evidencias/deploy-github-ssm.txt",
+              "880a9e0516e7e66b1584aadb49d79eee0b66d7085fe2272b854399b1b673345c"
+            ],
+            [
+              "deploy-security.txt",
+              "docs/evidencias/deploy-security.txt",
+              "f8b4c8bf37abc0e758bcb81f1a7a9d1fec6ba7df40ed4a2a71223131a93c3ac7"
+            ],
+            [
+              "ghcr-local.txt",
+              "docs/evidencias/ghcr-local.txt",
+              "1529a96017a0f61c96ede96da780150e5a95af0173cf4271bedad5f3dc1a9443"
+            ],
+            [
+              "github-trust.json",
+              "docs/iam/github-trust.json",
+              "790beb8d0d578d27229caa7afa7530ce6fe70999bc47bbd538001c970055f249"
+            ],
+            [
+              "grafana-api.png",
+              "docs/evidencias/capturas/grafana-api.png",
+              "00f5d4997690942785a02db4c37e6fc357b24322b59880802173641e5d3b5c23"
+            ],
+            [
+              "grafana-hpa-carga.png",
+              "docs/evidencias/capturas/grafana-hpa-carga.png",
+              "732c83f4f84b34b8c41c38b5e2d1b70ef823f13a9a53b5da20cc3afff2ff3565"
+            ],
+            [
+              "health.exit",
+              "docs/evidencias/dast-ci-36353724830/dast-bf7483d9782d747556ba0bffb70eb0db77e4d21b/zap/health.exit",
+              "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3"
+            ],
+            [
+              "health.html",
+              "docs/evidencias/dast-ci-36353724830/dast-bf7483d9782d747556ba0bffb70eb0db77e4d21b/zap/health.html",
+              "c7707c09aacb9e10ddcb4462ae8fc1d16d69f8733be19c3f644e071c5b2898b3"
+            ],
+            [
+              "health.json",
+              "docs/evidencias/dast-ci-36353724830/dast-bf7483d9782d747556ba0bffb70eb0db77e4d21b/zap/health.json",
+              "bf27b0346463e98a48d46e67da7673a38cae90603eecaf1e4e7128a355f45c7c"
+            ],
+            [
+              "health.log",
+              "docs/evidencias/dast-ci-36353724830/dast-bf7483d9782d747556ba0bffb70eb0db77e4d21b/zap/health.log",
+              "939e3340c19d674a4784ceec98ab32b22aa9a72b91fd18db1f41e5fb8b9675ef"
+            ],
+            [
+              "home.exit",
+              "docs/evidencias/dast-ci-36353724830/dast-bf7483d9782d747556ba0bffb70eb0db77e4d21b/zap/home.exit",
+              "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3"
+            ],
+            [
+              "home.html",
+              "docs/evidencias/dast-ci-36353724830/dast-bf7483d9782d747556ba0bffb70eb0db77e4d21b/zap/home.html",
+              "1d00031b96344d60854e8dfbe75e5875b58d9fd7a82e700318af163306adf82d"
+            ],
+            [
+              "home.json",
+              "docs/evidencias/dast-ci-36353724830/dast-bf7483d9782d747556ba0bffb70eb0db77e4d21b/zap/home.json",
+              "ccaf042c4ca605ea98a304cee526175219458ce16d8ed5890d5c0b813546adb0"
+            ],
+            [
+              "home.log",
+              "docs/evidencias/dast-ci-36353724830/dast-bf7483d9782d747556ba0bffb70eb0db77e4d21b/zap/home.log",
+              "70657aa74004222a0cb55afe622fe0265b43fdd16b3bcb26da21744494e04ab8"
+            ],
+            [
+              "hpa-carga.txt",
+              "docs/evidencias/hpa-carga.txt",
+              "786769839c3b7b4dd8a2af1245f78d602df70e6254fba87ffd0787e3419b5add"
+            ],
+            [
+              "hpa-final.txt",
+              "docs/evidencias/hpa-final.txt",
+              "ca4df8f0305a04805ac8dca16642b852f2324755ee0631c38e4370ff8ea9f8c0"
+            ],
+            [
+              "hpa-prueba.txt",
+              "docs/evidencias/hpa-prueba.txt",
+              "9f67ef9f69095ab8b9ba88996ffd737a9ee3b1b50f0a4cd5a5aefa73e729c065"
+            ],
+            [
+              "imagen (3).txt",
+              "docs/evidencias/zap-inicial/imagen.txt",
+              "6491150ea85b7e760f9fb82d87e74241d5128eb6b92001800aceb1f05c57e0df"
+            ],
+            [
+              "imagen.txt",
+              "docs/evidencias/zap-inicial/imagen.txt",
+              "6491150ea85b7e760f9fb82d87e74241d5128eb6b92001800aceb1f05c57e0df"
+            ],
+            [
+              "informe-fuente.md",
+              "docs/informe-fuente.md",
+              "205eb6b73a25370aa69ec86e843804eafdcb56a8c86ab0db61277f784222e312"
+            ],
+            [
+              "k8s-deploy.txt",
+              "docs/evidencias/k8s-deploy.txt",
+              "7eba133fa73934a4c809bc3d06b0fe43206d4fc2bc39c1845408d82b2fa20d93"
+            ],
+            [
+              "k8s-metricas.txt",
+              "docs/evidencias/k8s-metricas.txt",
+              "529429fbc41508b8cbbd36ea65cdda22721af5474338e2905241d79124c313e6"
+            ],
+            [
+              "metrics.exit",
+              "docs/evidencias/dast-ci-36353724830/dast-bf7483d9782d747556ba0bffb70eb0db77e4d21b/zap/metrics.exit",
+              "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3"
+            ],
+            [
+              "metrics.html",
+              "docs/evidencias/dast-ci-36353724830/dast-bf7483d9782d747556ba0bffb70eb0db77e4d21b/zap/metrics.html",
+              "d944f120b3b45b3b802cfbeb0e5f811811751f076095cc075084b4c8d0ada82a"
+            ],
+            [
+              "metrics.json",
+              "docs/evidencias/dast-ci-36353724830/dast-bf7483d9782d747556ba0bffb70eb0db77e4d21b/zap/metrics.json",
+              "1a1bdb03f72e908e705fed5cbc049b19da6beb57c9e10c3446023a6e4d691679"
+            ],
+            [
+              "metrics.log",
+              "docs/evidencias/dast-ci-36353724830/dast-bf7483d9782d747556ba0bffb70eb0db77e4d21b/zap/metrics.log",
+              "bcfa15fcb3b786bfc802335a47836dc442d98bcccf5103bb59abd8e601ba70dc"
+            ],
+            [
+              "monitoring-install.txt",
+              "docs/evidencias/monitoring-install.txt",
+              "4a469d5004cc66ba0c0fbc00a0ff63a59a5a5988dd260c6db8f53895a8960821"
+            ],
+            [
+              "reporte (4).html",
+              "docs/evidencias/zap-inicial/reporte.html",
+              "75b48a76b804513ed4f8d88051f2589d8307920dc8a3878f238eb5201ec229f7"
+            ],
+            [
+              "reporte (5).json",
+              "docs/evidencias/zap-inicial/reporte.json",
+              "9fa4bc7c6261f343e63105eef1d8bac6baf4374c3d67fed9c4c56477726f59c3"
+            ],
+            [
+              "reporte.html",
+              "docs/evidencias/zap-final/reporte.html",
+              "001b023cf382e3080b115e3f51395d6ea3009999c598a729aadbbd00f2585a8c"
+            ],
+            [
+              "reporte.json",
+              "docs/evidencias/zap-final/reporte.json",
+              "2d258da965637ec0aecdfd39ae6b7339d37edefd6fbf35905bfe1b1134c9d32e"
+            ],
+            [
+              "reproduccion-aws.md",
+              "docs/reproduccion-aws.md",
+              "a4bfb9feb2d70725ea7d4e6b8725121904e567b31725a5fcd357946af93ef70f"
+            ],
+            [
+              "resultado (6).txt",
+              "docs/evidencias/zap-final/resultado.txt",
+              "d519081976bc6f7e7983f6b7ee893937af394db1cfaff0a988921a3f45926cb4"
+            ],
+            [
+              "resultado.txt",
+              "docs/evidencias/zap-final/resultado.txt",
+              "d519081976bc6f7e7983f6b7ee893937af394db1cfaff0a988921a3f45926cb4"
+            ],
+            [
+              "revision-documental.txt",
+              "docs/evidencias/revision-documental.txt",
+              "431251da3673a533f1b645fd67a72d8a8018bc9070af37fa9e13c666f389a7d9"
+            ],
+            [
+              "ssm-deploy.json",
+              "docs/iam/ssm-deploy.json",
+              "e289f155b0c8ce553b09a8827e17e7f418ce8b29632f48891969499823ee19d9"
+            ],
+            [
+              "terraform-apply.txt",
+              "docs/evidencias/terraform-apply.txt",
+              "c11f434048b753d52491320aad1cecaff74fd7ec0aec9127cf762af21b15b9af"
+            ],
+            [
+              "terraform-fix-network.txt",
+              "docs/evidencias/terraform-fix-network.txt",
+              "f614cb9b476d7552df9829ce5df2835a0b6d9f265d36847a90092e8b93d3b28a"
+            ],
+            [
+              "terraform-github-import.txt",
+              "docs/evidencias/terraform-github-import.txt",
+              "14f5afa7467347c83ced5bffc038d7b42a4ce5dc123af290cb775813685193b2"
+            ],
+            [
+              "terraform-github-plan.txt",
+              "docs/evidencias/terraform-github-plan.txt",
+              "b763cb0b4338e255c2f3cbb53458ecf6c657af7fd7ff61d1e201f38013260f00"
+            ],
+            [
+              "terraform-plan-final.txt",
+              "docs/evidencias/terraform-plan-final.txt",
+              "f47f2490a722c7c32106bab536a72a5500c287feca77371a820e2cfbb42e73f6"
+            ],
+            [
+              "terraform-provision.json",
+              "docs/iam/terraform-provision.json",
+              "5cf4b77f57a6d68ae485f111df6fb1f4c1ab609402cca54394e347ca06f013d0"
+            ],
+            [
+              "terraform-s3-plan.txt",
+              "docs/evidencias/terraform-s3-plan.txt",
+              "85167bee1a8eb6c265f6e57d241c790d3399b6829125734b2e36b75834ead890"
+            ],
+            [
+              "terraform-state.json",
+              "docs/iam/terraform-state.json",
+              "61a66a37ff62b6d2032b7e5f7947c54766363e98d192a4e63c680ef7375752f6"
+            ],
+            [
+              "tests-local.txt",
+              "docs/evidencias/tests-local.txt",
+              "7361b11ab0f2817f94c1a98ec15521641b7a7e1d96a216bf2e255582032536a4"
+            ],
+            [
+              "tests-security.txt",
+              "docs/evidencias/tests-security.txt",
+              "a79b2a72211533cc14889b19e7e04f257140085f53cf29d7584f4adafb57cf15"
+            ],
+            [
+              "trafico-api.txt",
+              "docs/evidencias/trafico-api.txt",
+              "4fd41852a861e1e8d1ebe0cb7cce099005809419e2e80ba8ce1d063ea40c9cd3"
+            ],
+            [
+              "zap (1).yaml",
+              "docs/evidencias/zap-final/zap.yaml",
+              "68b895500f1fc6710d394b45443d23ec686aa4542fbc0b230ca2e973548ab479"
+            ],
+            [
+              "zap (7).yaml",
+              "docs/evidencias/zap-final/zap.yaml",
+              "68b895500f1fc6710d394b45443d23ec686aa4542fbc0b230ca2e973548ab479"
+            ],
+            [
+              "zap.yaml",
+              "docs/evidencias/dast-ci-36353724830/dast-bf7483d9782d747556ba0bffb70eb0db77e4d21b/zap/zap.yaml",
+              "ba2238c81372c305a3fc2de4ffb6deeeaaa115ec9124e3790db410076104f5d5"
+            ]
+          ]''')
+          
+          def digest(path):
+              return hashlib.sha256(path.read_bytes()).hexdigest()
+          
+          pending = []
+          errors = []
+          for source, target, expected in files:
+              src, dst = Path(source), Path(target)
+              if not src.exists():
+                  if not dst.is_file() or digest(dst) != expected:
+                      errors.append(f"Falta el archivo esperado: {source} / {target}")
+                  continue
+              if not src.is_file() or digest(src) != expected:
+                  errors.append(f"El archivo cambió desde la revisión: {source}")
+              elif dst.exists() and (not dst.is_file() or digest(dst) != expected):
+                  errors.append(f"El destino tiene otro contenido: {target}")
+              else:
+                  pending.append((src, dst))
+          
+          # Revisar todos los archivos antes de modificar cualquiera.
+          if errors:
+              raise SystemExit("\n".join(errors))
+          
+          moved = duplicates = 0
+          for src, dst in pending:
+              if dst.exists():
+                  src.unlink()  # Copia idéntica ya conservada en docs.
+                  duplicates += 1
+                  print(f"Duplicado retirado: {src}; conservado en {dst}")
+              else:
+                  dst.parent.mkdir(parents=True, exist_ok=True)
+                  src.rename(dst)
+                  moved += 1
+                  print(f"Movido: {src} -> {dst}")
+          
+          print(f"Resultado: {moved} movidos, {duplicates} duplicados retirados.")
+          summary = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary:
+              with open(summary, "a", encoding="utf-8") as stream:
+                  stream.write(f"## Documentación ordenada\n\n"
+                               f"- Archivos movidos a docs: {moved}\n"
+                               f"- Copias idénticas retiradas de la raíz: {duplicates}\n"
+                               "- README conservado en la raíz.\n"
+                               "- Código, Terraform y manifiestos sin cambios.\n")
+          PYTHON
+
+      - name: Guardar correccion en Git
+        shell: bash
+        run: |
+          git add -A -- docs
+          python3 <<'PYTHON'
+          import json
+          import subprocess
+          files = json.loads(r'''["INDICE.md", "PFArrocha.pdf", "analisis.md", "api.log", "aws-health.txt", "aws-oidc-success.txt", "ci-cd-success.png", "ci-dast-success.txt", "consola (2).txt", "consola.txt", "deploy-github-ssm.txt", "deploy-security.txt", "ghcr-local.txt", "github-trust.json", "grafana-api.png", "grafana-hpa-carga.png", "health.exit", "health.html", "health.json", "health.log", "home.exit", "home.html", "home.json", "home.log", "hpa-carga.txt", "hpa-final.txt", "hpa-prueba.txt", "imagen (3).txt", "imagen.txt", "informe-fuente.md", "k8s-deploy.txt", "k8s-metricas.txt", "metrics.exit", "metrics.html", "metrics.json", "metrics.log", "monitoring-install.txt", "reporte (4).html", "reporte (5).json", "reporte.html", "reporte.json", "reproduccion-aws.md", "resultado (6).txt", "resultado.txt", "revision-documental.txt", "ssm-deploy.json", "terraform-apply.txt", "terraform-fix-network.txt", "terraform-github-import.txt", "terraform-github-plan.txt", "terraform-plan-final.txt", "terraform-provision.json", "terraform-s3-plan.txt", "terraform-state.json", "tests-local.txt", "tests-security.txt", "trafico-api.txt", "zap (1).yaml", "zap (7).yaml", "zap.yaml"]''')
+          for source in files:
+              tracked = subprocess.run(["git", "ls-files", "--", source], capture_output=True, text=True, check=True)
+              if tracked.stdout.strip():
+                  subprocess.run(["git", "add", "-A", "--", source], check=True)
+          PYTHON
+          if git diff --cached --quiet; then
+            echo "La documentacion ya estaba ordenada."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "docs: ordenar informe y evidencias en docs [skip ci]"
+          git push origin HEAD:main
